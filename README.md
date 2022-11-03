@@ -6,6 +6,7 @@
 * Slighted modified version of [Lichee Pi Nano buildroot](https://github.com/unframework/licheepi-nano-buildroot) with USB-OTG and game pad support. [Original README](README.orig.md).
 * Added USB-OTG support through kernel patch from linux-sunxi.
 * Enabled xpad (Xbox controller) driver.
+* Linux Kernel 5.11
 
 ## Hardware setup
 
