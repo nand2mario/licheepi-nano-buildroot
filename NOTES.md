@@ -1,15 +1,19 @@
 
 
-Notes from nand2mario
+# Lichee Pi Nano buildroot with USB-OTG
 
-## What's changed
-* Added USB-OTG support
+## Overview
+* Slighted modified version of [Lichee Pi Nano buildroot](https://github.com/unframework/licheepi-nano-buildroot) with USB-OTG and others.
+* Added USB-OTG support through kernel patch from linux-sunxi.
+* Enabled xpad (Xbox controller) driver.
+
+nand2mario, 2022.11
 
 ## Hardware setup
 
 <img src="licheepi-nano-usb-otg.jpg" width=500>
 
-PC -> USB-serial dongle -> Lichee Pi Nano -> USG-OTG dongle -> USB device (e.g. Xbox controller connector)
+PC -> USB-serial dongle -> Lichee Pi Nano -> USG-OTG dongle -> USB device (hub, Xbox controller connector ...)
 
 * 4 wires from USB-serial dongle to Lichee Pi Nano: GND to GND, TX to U0RX, Rx to U0TX, 5V to 5V (Nano is powered by this). 
 
