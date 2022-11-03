@@ -1,0 +1,126 @@
+diff --git a/arch/arm/boot/dts/suniv-f1c100s-licheepi-nano.dts b/arch/arm/boot/dts/suniv-f1c100s-licheepi-nano.dts
+index a30f61bf0d51..a1c83e27fa28 100644
+--- a/arch/arm/boot/dts/suniv-f1c100s-licheepi-nano.dts
++++ b/arch/arm/boot/dts/suniv-f1c100s-licheepi-nano.dts
+@@ -192,3 +192,17 @@ &uart0 {
+ 	pinctrl-0 = <&uart0_pe_pins>;
+ 	status = "okay";
+ };
++
++&otg_sram {
++	status = "okay";
++};
++
++&usb_otg {
++	dr_mode = "otg";
++	status = "okay";
++};
++
++&usbphy {
++	usb0_id_det-gpio = <&pio 4 2 GPIO_ACTIVE_HIGH>; /* PE2 */
++	status = "okay";
++};
+diff --git a/arch/arm/boot/dts/suniv-f1c100s.dtsi b/arch/arm/boot/dts/suniv-f1c100s.dtsi
+index 91e308ba907e..07a5ba762b38 100644
+--- a/arch/arm/boot/dts/suniv-f1c100s.dtsi
++++ b/arch/arm/boot/dts/suniv-f1c100s.dtsi
+@@ -279,6 +279,32 @@ uart2: serial@1c25800 {
+ 			status = "disabled";
+ 		};
+ 
++		usb_otg: usb@1c13000 {
++			compatible = "allwinner,suniv-musb";
++			reg = <0x01c13000 0x0400>;
++			clocks = <&ccu CLK_BUS_OTG>;
++			resets = <&ccu RST_BUS_OTG>;
++			interrupts = <26>;
++			interrupt-names = "mc";
++			phys = <&usbphy 0>;
++			phy-names = "usb";
++			extcon = <&usbphy 0>;
++			allwinner,sram = <&otg_sram 1>;
++			status = "disabled";
++		};
++
++		usbphy: phy@1c13400 {
++			compatible = "allwinner,suniv-usb-phy";
++			reg = <0x01c13400 0x10>;
++			reg-names = "phy_ctrl";
++			clocks = <&ccu CLK_USB_PHY0>;
++			clock-names = "usb0_phy";
++			resets = <&ccu RST_USB_PHY0>;
++			reset-names = "usb0_reset";
++			#phy-cells = <1>;
++			status = "disabled";
++		};
++
+ 		fe0: display-frontend@1e00000 {
+ 			compatible = "allwinner,suniv-f1c100s-display-frontend";
+ 			reg = <0x01e00000 0x20000>;
+diff --git a/drivers/phy/allwinner/phy-sun4i-usb.c b/drivers/phy/allwinner/phy-sun4i-usb.c
+index 788dd5cdbb7d..44dcffa7fb62 100644
+--- a/drivers/phy/allwinner/phy-sun4i-usb.c
++++ b/drivers/phy/allwinner/phy-sun4i-usb.c
+@@ -99,6 +99,7 @@
+ #define POLL_TIME			msecs_to_jiffies(250)
+ 
+ enum sun4i_usb_phy_type {
++	suniv_phy,
+ 	sun4i_a10_phy,
+ 	sun6i_a31_phy,
+ 	sun8i_a33_phy,
+@@ -857,6 +858,14 @@ static int sun4i_usb_phy_probe(struct platform_device *pdev)
+ 	return 0;
+ }
+ 
++static const struct sun4i_usb_phy_cfg suniv_cfg = {
++	.num_phys = 1,
++	.type = suniv_phy,
++	.disc_thresh = 3,
++	.phyctl_offset = REG_PHYCTL_A10,
++	.dedicated_clocks = true,
++};
++
+ static const struct sun4i_usb_phy_cfg sun4i_a10_cfg = {
+ 	.num_phys = 3,
+ 	.type = sun4i_a10_phy,
+@@ -970,6 +979,7 @@ static const struct sun4i_usb_phy_cfg sun50i_h6_cfg = {
+ };
+ 
+ static const struct of_device_id sun4i_usb_phy_of_match[] = {
++	{ .compatible = "allwinner,suniv-usb-phy", .data = &suniv_cfg },
+ 	{ .compatible = "allwinner,sun4i-a10-usb-phy", .data = &sun4i_a10_cfg },
+ 	{ .compatible = "allwinner,sun5i-a13-usb-phy", .data = &sun5i_a13_cfg },
+ 	{ .compatible = "allwinner,sun6i-a31-usb-phy", .data = &sun6i_a31_cfg },
+diff --git a/drivers/usb/musb/sunxi.c b/drivers/usb/musb/sunxi.c
+index f3f76f2ac63f..41295360ef2b 100644
+--- a/drivers/usb/musb/sunxi.c
++++ b/drivers/usb/musb/sunxi.c
+@@ -714,14 +714,17 @@ static int sunxi_musb_probe(struct platform_device *pdev)
+ 	INIT_WORK(&glue->work, sunxi_musb_work);
+ 	glue->host_nb.notifier_call = sunxi_musb_host_notifier;
+ 
+-	if (of_device_is_compatible(np, "allwinner,sun4i-a10-musb"))
++	if (of_device_is_compatible(np, "allwinner,sun4i-a10-musb") ||
++	    of_device_is_compatible(np, "allwinner,suniv-musb")) {
+ 		set_bit(SUNXI_MUSB_FL_HAS_SRAM, &glue->flags);
++	}
+ 
+ 	if (of_device_is_compatible(np, "allwinner,sun6i-a31-musb"))
+ 		set_bit(SUNXI_MUSB_FL_HAS_RESET, &glue->flags);
+ 
+ 	if (of_device_is_compatible(np, "allwinner,sun8i-a33-musb") ||
+-	    of_device_is_compatible(np, "allwinner,sun8i-h3-musb")) {
++	    of_device_is_compatible(np, "allwinner,sun8i-h3-musb") ||
++	    of_device_is_compatible(np, "allwinner,suniv-musb")) {
+ 		set_bit(SUNXI_MUSB_FL_HAS_RESET, &glue->flags);
+ 		set_bit(SUNXI_MUSB_FL_NO_CONFIGDATA, &glue->flags);
+ 	}
+@@ -814,6 +817,7 @@ static int sunxi_musb_remove(struct platform_device *pdev)
+ }
+ 
+ static const struct of_device_id sunxi_musb_match[] = {
++	{ .compatible = "allwinner,suniv-musb", },
+ 	{ .compatible = "allwinner,sun4i-a10-musb", },
+ 	{ .compatible = "allwinner,sun6i-a31-musb", },
+ 	{ .compatible = "allwinner,sun8i-a33-musb", },

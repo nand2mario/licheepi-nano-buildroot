@@ -11,6 +11,22 @@
 	model = "Lichee Pi Nano (Custom)";
 };
 
+// zf: add USB-otg support
+// see: https://patchwork.kernel.org/project/linux-usb/patch/20200331170219.267732-6-thirtythreeforty@gmail.com/
+&otg_sram {
+	status = "okay";
+};
+
+&usb_otg {
+	dr_mode = "otg";
+	status = "okay";
+};
+
+&usbphy {
+	usb0_id_det-gpio = <&pio 4 2 GPIO_ACTIVE_HIGH>; /* PE2 */
+	status = "okay";
+};
+
 /*
 &panel {
 	// override default resolution (800x480) with smaller resolution: 480x272
